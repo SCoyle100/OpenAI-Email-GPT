@@ -150,3 +150,158 @@ def retrieveMessages():
 
 # Assuming 'account' is already authenticated
 messageData = retrieveMessages()
+
+
+#**********FUNCTIONS FOR VECTOR SEARCH AND QUERY***************
+def processMessageData(messageData):
+    for message in messageData:
+        # Extract the email body, metadata, and ID from each message tuple
+        email_body, metadata, message_id = message
+
+        #print("Type:", type(messageData[0]))
+        #print("Content:", messageData[0])
+
+
+        # Create embeddings for the email body
+        embedding = createEmbeddings(email_body, metadata)
+
+        # Store the embedding and metadata in the Pinecone vector database
+        storeResponse = storeVector(embedding, message_id, metadata)
+
+        # Optionally, you can print the response or handle it as needed
+        print(f"Stored message ID {message_id} with response: {storeResponse}")
+
+
+'''
+def createEmbeddings(email_body):
+    embeddings = client.embeddings.create(
+        input=email_body,
+        model="text-embedding-ada-002"
+    )
+    # Extract the embedding
+    embedding = embeddings.data[0].embedding
+    return embedding
+'''
+
+def createEmbeddings(email_body, metadata):
+    # Convert metadata to a text format
+    metadata_text = []
+    for key, value in metadata.items():
+        value_str = str(value) if value is not None else "none"
+        metadata_text.append(f"{key}: {value_str}")
+
+    # Combine the metadata and email body
+    combined_text = "\n".join(metadata_text) + "\n\n" + email_body
+
+    # Generate embedding for the combined text
+    embeddings = client.embeddings.create(
+        input=combined_text,
+        model="text-embedding-ada-002"
+    )
+
+    # Extract the embedding
+    embedding = embeddings.data[0].embedding
+    return embedding
+  
+
+
+def storeVector(embedding, id, metadata):
+    # Convert None values to a string representation
+    for key in metadata:
+        if metadata[key] is None:
+            metadata[key] = "none"
+
+
+    upsertRequest = {
+        'vectors': [
+            {
+                'id': id,
+                'values': embedding,
+                'metadata': metadata,
+            }
+        ]
+    }
+
+    upsertResponse = index.upsert(vectors=upsertRequest['vectors'])
+
+    return upsertResponse
+
+
+
+
+
+
+
+def get_index_stats(index):
+    index_stats = index.describe_index_stats({})
+    print(index_stats)
+    return index_stats
+
+
+
+
+
+
+def createQueryVector(userQuery):
+    queryEmbeddings = client.embeddings.create (
+        input=userQuery,
+        model="text-embedding-ada-002",
+    )
+
+    queryEmbedding = queryEmbeddings.data[0].embedding
+    #print(queryEmbedding)
+    return queryEmbedding
+
+
+def contextSearch(queryEmbedding):
+    searchResponse = index.query(
+        vector=queryEmbedding,
+        top_k=3,
+        includeMetadata=True
+    )
+
+    matches = searchResponse.get('matches', [])
+    contexts = [
+        f"Subject: {result['metadata'].get('subject')}\nDate: {result['metadata'].get('date')}\nBody: {result['metadata'].get('body')}\nID: {result['metadata'].get('ID')}\nAttachments: {result['metadata'].get('Attachments')}" 
+        for result in matches 
+        if 'body' in result.get('metadata', {})
+    ]
+    return contexts
+
+
+
+def create_prompt(userQuery, queryEmbedding):
+    # Get contexts using the contextSearch function
+    contexts = contextSearch(queryEmbedding)
+
+    prompt_start = (
+        "Answer the question based on the context below. \n\n"
+        "Context: \n"
+    )
+
+    # Join contexts with line breaks
+    joined_contexts = "\n\n".join(contexts)
+
+    prompt_end = f"\nQuestion: {userQuery} \n"
+
+    # Create the final prompt
+    query_with_contexts = prompt_start + joined_contexts + prompt_end
+
+    #print(query_with_contexts)
+
+    return query_with_contexts
+
+
+def sendPrompt(prompt):
+    completion = client.chat.completions.create(
+        model="gpt-4-1106-preview",
+        messages=[{"role": "system", "content": "You are a helpful assistant that answers questions about emails and more. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."}, 
+                  {"role": "user", "content": prompt}]
+        )
+    
+    return completion.choices[0].message.content
+
+
+messageData = retrieveMessages()
+
+processMessageData(messageData)
