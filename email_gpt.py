@@ -422,3 +422,156 @@ available_functions = {
     "email_vector_search": email_vector_search, #query email inbox
     "email_standard_search": email_standard_search
 }
+
+
+# Define functions for the assistant
+functions = [
+    {
+        "name": "create_folder",
+        "description": "Creates a folder with a specified name.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "folder_name": {
+                    "type": "string",
+                    "description": "The name of the folder to be created."
+                }
+            },
+            "required": ["folder_name"]
+        }
+    },
+    {
+        "name": "send_email",
+        "description": "Sends an email to a specified person.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "person_name": {
+                    "type": "string",
+                    "description": "The name of the person to send the email to."
+                }
+            },
+            "required": ["person_name"]
+        }
+    },
+    {
+        "name": "downloading_attachments",
+  "description": "Downloads email attachments to a specified folder.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "folder_name": {
+        "type": "string",
+        "description": "The name of the folder where attachments will be downloaded."
+      },
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+           
+            "file_name": {
+              "type": "string"
+            },
+            
+            
+          },
+          "required": ["file_name"] 
+        },
+        "description": "The list of attachment objects to download."
+      }
+    },
+    "required": ["folder_name", "files"]
+        }
+    },
+    {
+        "name": "email_vector_search",
+        "description": '''Processes a user query to search the pinecone vector database that includes the email inbox by creating an embedding for the query,
+        retrieving relevant contexts from the pinecone vector database, and generating a prompt for the run.''',
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "userQuery": {
+                    "type": "string",
+                    "description": "The user query to the email inbox to be processed. this is in the form of a question"
+                }
+            },
+            "required": ["userQuery"]
+        }
+    },
+    {
+    "name": "email_standard_search",
+    "description": "Searches the Outlook inbox for messages matching a given query. The function accesses the authenticated user's Outlook inbox and retrieves a list of messages that match the search criteria.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            
+            "query": {
+                "type": "string",
+                "description": "The search query to be used for filtering inbox messages."
+            }
+        },
+        "required": ["query"]
+    }
+}
+
+]
+
+
+
+
+def get_gpt_response(user_input):
+    messages = [{"role": "system", "content": "You are a helpful assistant. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous, especially for email search. you may need to confirm if the user wants vector or standard email search."}, {"role": "user", "content": user_input}]
+    return client.chat.completions.create(
+        model="gpt-4-1106-preview",
+        messages=messages,
+        tools=[{"type": "function", "function": func} for func in functions],
+        tool_choice="auto",
+    )
+
+def execute_function_call(function_name, arguments):
+    function = available_functions.get(function_name, None)
+    if function:
+        results = function(**arguments)
+    else:
+        results = f"Error: function {function_name} does not exist"
+    return results
+
+chat_history = []
+predefined_prompt = "Here is the chat history for context: "
+
+while True:
+    user_input = transcribe_forever(record_audio())
+    if user_input.lower() == "quit":
+        break
+
+    print(f"You said: {user_input}")  # Print user input to the terminal
+    chat_history.append(f"User: {user_input}")  # Add user input to chat history
+
+    if len(chat_history) > 1:
+        user_input = predefined_prompt + '\n'.join(chat_history) + "\n" + user_input
+
+    gpt_response = get_gpt_response(user_input)
+
+    gpt_text_response = gpt_response.choices[0].message.content
+    print(f"GPT Response: {gpt_text_response}")  # Print GPT response text output to the terminal
+    chat_history.append(f"Agent: {gpt_text_response}")  # Add GPT text response to chat history
+
+    # Check for tool_calls in the GPT response
+    if hasattr(gpt_response.choices[0].message, 'tool_calls') and gpt_response.choices[0].message.tool_calls:
+        tool_call = gpt_response.choices[0].message.tool_calls[0]
+        function_name = tool_call.function.name
+        arguments = json.loads(tool_call.function.arguments)  # Parse JSON arguments
+
+        try:
+            function_response = execute_function_call(function_name, arguments)
+            chat_history.append(f"GPT: {function_response}")  # Add function response to chat history
+        except Exception as e:
+            error_message = f"An error occurred: {str(e)}"
+            print(error_message)  # Print the error message to the terminal
+            chat_history.append(f"GPT: {error_message}")  # Add error message to chat history
+    else:
+        function_response = "No function call in response."
+        #chat_history.append(f"GPT: {function_response}") 
+        #
+ 
