@@ -28,5 +28,13 @@ As this project evolves, the goal is to refine these functionalities, ensuring a
 
 Your involvement and feedback are invaluable to this project. Feel free to explore, contribute, and be a part of crafting the future of office automation with OpenAI Email GPT.
 
+Updates - 2/1/2024:
+
+I am planning on doing the following in the near future:
+
+- Modularizing script and reducing technical debt
+- Adding more functions such as triggering python, powershell or UiPath automations
+- Utilizing GPT Vision
+- Creating a separate repository that is essentially the same project, but instead uses the OpenAI Assistants API (which is currently a bit too expensive for production use).  This would ultimately allow for email attachments like Excel files to be downloaded and analyzed with code interpreter, and then decisions would be be made based on information from a vector database (either Pinecone or ChromaDB).  
 
 
