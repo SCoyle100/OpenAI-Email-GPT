@@ -13,6 +13,7 @@ import wave
 import chromadb
 from bs4 import BeautifulSoup
 import streamlit as st
+import threading
 
 
 
@@ -24,7 +25,45 @@ pinecone_api = os.getenv('PINECONE_API')
 
 
 
+
+
+
+class AudioRecorder:
+    def __init__(self):
+        self.recognizer = sr.Recognizer()
+        self.microphone = sr.Microphone(sample_rate=16000)
+        self.recording = False
+        self.thread = None
+        self.frames = []
+
+    def start_recording(self):
+        self.recording = True
+        self.frames = []
+        self.thread = threading.Thread(target=self.record)
+        self.thread.start()
+
+    def stop_recording(self):
+        self.recording = False
+        self.thread.join()  # Wait for the recording thread to finish
+        filename = "recording.wav"
+        with wave.open(filename, 'wb') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(self.recognizer.recognize().sample_width)
+            wf.setframerate(16000)
+            wf.writeframes(b''.join(self.frames))
+        return filename
+
+    def record(self):
+        with self.microphone as source:
+            self.recognizer.adjust_for_ambient_noise(source)  # Adjust for ambient noise once at the beginning
+            while self.recording:
+                audio = self.recognizer.listen(source, phrase_time_limit=5)  # Listen for 5 seconds
+                self.frames.append(audio.get_wav_data())
+
+
 #*******AUDIO FUNCTIONS*********
+                
+'''                
 def record_audio():
     # Load the speech recognizer and set the initial energy threshold and pause threshold
     r = sr.Recognizer()
@@ -48,7 +87,7 @@ def record_audio():
             wf.writeframes(audio.get_wav_data())
 
             return filename
-        
+'''        
 
 def transcribe_forever(audio_file_path):
     
@@ -107,6 +146,53 @@ account = Account(credentials)
 if account.authenticate(scopes=['basic', 'message_all']):
     print('Authenticated!')
 
+def parse_html_content(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Remove script and style elements
+    for script_or_style in soup(["script", "style"]):
+        script_or_style.decompose()
+
+    # Handle links
+    for link in soup.find_all('a'):
+        href = link.get('href', '')
+        link_text = link.get_text(strip=True)
+        link.replace_with(link_text)
+
+    # Handle images
+    for image in soup.find_all('img'):
+        alt_text = image.get('alt', '')
+        image.replace_with(f'[Image: {alt_text}]' if alt_text else '')
+
+    # Extract text
+    text = soup.get_text(separator=' ', strip=True)
+
+    # Replace or remove specific unicode characters
+    replacements = {
+    '\u200c': '',  # ZERO WIDTH NON-JOINER
+    '\xa0': ' ',   # NO-BREAK SPACE
+    '͏': '',       # Control character
+    '\u200b': '',  # ZERO WIDTH SPACE
+    '\u200e': '',  '\u200f': '',  # Directionality marks
+    '\u00ad': '',  # SOFT HYPHEN
+    '\u200a': ' ', '\u2009': ' ', '\u2002': ' ', '\u2003': ' ',  # Various spaces
+    '\u200d': '',  # ZERO WIDTH JOINER
+    '\ufffc': '',  # OBJECT REPLACEMENT CHARACTER
+    '\u2028': '\n', '\u2029': '\n\n',  # Line and paragraph separators
+    '\u2060': '',  # WORD JOINER
+    '\u2011': '-'  # NON-BREAKING HYPHEN
+}
+    
+    for search, replace in replacements.items():
+        text = text.replace(search, replace)
+
+    # Clean up whitespace further
+    lines = (line.strip() for line in text.splitlines())
+    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+    cleaned_text = '\n'.join(chunk for chunk in chunks if chunk)
+
+    return cleaned_text    
+
 
 def retrieveMessages():
     # Access the mailbox
@@ -115,14 +201,13 @@ def retrieveMessages():
     messages_ = []  # Initialize an empty list to store messages
 
 # Get unread messages
-    unread_messages = inbox.get_messages(limit=25, query="isRead eq false")
+    unread_messages = inbox.get_messages(limit=3, query="isRead eq true")
 
 
 
     for message in unread_messages:
          # Parse HTML and extract text and/or tables
-        #soup = BeautifulSoup(message.body, 'html.parser')
-        #text_and_tables = ''.join([str(tag) for tag in soup.find_all(['p', 'table'])])
+        cleaned_email = parse_html_content(message.body)
     
         attachments_info = []
         if message.has_attachments:
@@ -144,12 +229,19 @@ def retrieveMessages():
         }
         
         # Append the tuple (message body, metadata, id) to the list
-        messages_.append((message.body, metadata, message.conversation_id))
+        messages_.append((cleaned_email, metadata, message.conversation_id))
 
     return messages_
 
+
+        
+
 # Assuming 'account' is already authenticated
 messageData = retrieveMessages()
+
+print(messageData)
+
+
 
 
 #**********FUNCTIONS FOR VECTOR SEARCH AND QUERY***************
@@ -182,6 +274,8 @@ def createEmbeddings(email_body):
     embedding = embeddings.data[0].embedding
     return embedding
 '''
+
+
 
 def createEmbeddings(email_body, metadata):
     # Convert metadata to a text format
@@ -327,6 +421,8 @@ def create_folder(folder_name):
         return f"Error creating folder: {error}"
     
 
+
+
 def downloading_attachments(folder_name, message_id):
     folder_path = os.path.join(main_folder_path, folder_name)
 
@@ -350,11 +446,19 @@ def downloading_attachments(folder_name, message_id):
                 print(f"Attachment {attachment.name} saved to {folder_path}")
 
     return f"Attachments downloaded to {folder_path}"
-    
+
+
+
+
+
+   
 
 # Function to send an email (mock implementation)
 def send_email(person_name):
     print(f"Send email response: {person_name}")
+
+
+
 
 
 def email_standard_search(query):
@@ -407,7 +511,7 @@ def email_vector_search(userQuery):
     chat_history.append(f"Agent: {answer}")
 
     return answer
-        
+      
 
 
 
@@ -540,22 +644,46 @@ def execute_function_call(function_name, arguments):
 chat_history = []
 predefined_prompt = "Here is the chat history for context: "
 
+
+
+
+
+audio_recorder = AudioRecorder()
+
 while True:
-    user_input = transcribe_forever(record_audio())
-    if user_input.lower() == "quit":
+    # Offer the user a choice between typing or speaking
+    user_choice = input("Type your message, or press ENTER to start talking and ENTER again when you're done: ")
+
+    if user_choice == "":
+        print("Recording... Press ENTER to stop.")
+        audio_recorder.start_recording()
+        input()  # Wait for the user to press Enter to stop
+        audio_file_path = audio_recorder.stop_recording()
+        print("Transcribing...")
+        user_input = transcribe_forever(audio_file_path)
+    else:
+        user_input = user_choice  # Use the typed input directly
+
+    # This check allows the user to quit after their last message is transcribed or typed
+    if user_input.lower().strip() == "quit":
+        print("Quitting...")
         break
 
     print(f"You said: {user_input}")  # Print user input to the terminal
     chat_history.append(f"User: {user_input}")  # Add user input to chat history
 
+    # Incorporate the chat history into the GPT response if applicable
     if len(chat_history) > 1:
         user_input = predefined_prompt + '\n'.join(chat_history) + "\n" + user_input
 
     gpt_response = get_gpt_response(user_input)
-
     gpt_text_response = gpt_response.choices[0].message.content
     print(f"GPT Response: {gpt_text_response}")  # Print GPT response text output to the terminal
     chat_history.append(f"Agent: {gpt_text_response}")  # Add GPT text response to chat history
+
+
+    # Your existing logic to handle tool calls and errors follows
+
 
     # Check for tool_calls in the GPT response
     if hasattr(gpt_response.choices[0].message, 'tool_calls') and gpt_response.choices[0].message.tool_calls:
