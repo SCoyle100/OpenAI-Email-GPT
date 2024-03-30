@@ -2,7 +2,7 @@ from openai import OpenAI
 
 client = OpenAI()
 
-import requests
+
 import json
 import os
 import pinecone
@@ -176,6 +176,7 @@ def parse_html_content(html_content):
     '\u200e': '',  '\u200f': '',  # Directionality marks
     '\u00ad': '',  # SOFT HYPHEN
     '\u200a': ' ', '\u2009': ' ', '\u2002': ' ', '\u2003': ' ',  # Various spaces
+    '\u200c': ' ',
     '\u200d': '',  # ZERO WIDTH JOINER
     '\ufffc': '',  # OBJECT REPLACEMENT CHARACTER
     '\u2028': '\n', '\u2029': '\n\n',  # Line and paragraph separators
@@ -201,7 +202,7 @@ def retrieveMessages():
     messages_ = []  # Initialize an empty list to store messages
 
 # Get unread messages
-    unread_messages = inbox.get_messages(limit=3, query="isRead eq false")
+    unread_messages = inbox.get_messages(limit=4, query="isRead eq false")
 
 
 
@@ -225,6 +226,7 @@ def retrieveMessages():
             "Subject": message.subject,
             "Received": message.received,
             "Body preview": message.body_preview,
+            "Body": cleaned_email,
             "Attachments": attachments_info if attachments_info else None
         }
         
@@ -245,17 +247,17 @@ print(messageData)
 
 
 #**********FUNCTIONS FOR VECTOR SEARCH AND QUERY***************
-def processMessageData(messageData):
+def processMessageData(messageData):                  #try replacing cleaned_email with email_body again?
     for message in messageData:
         # Extract the email body, metadata, and ID from each message tuple
-        email_body, metadata, message_id = message
+        cleaned_email, metadata, message_id = message
 
         #print("Type:", type(messageData[0]))
         #print("Content:", messageData[0])
 
 
         # Create embeddings for the email body
-        embedding = createEmbeddings(email_body, metadata)
+        embedding = createEmbeddings(cleaned_email, metadata)
 
         # Store the embedding and metadata in the Pinecone vector database
         storeResponse = storeVector(embedding, message_id, metadata)
@@ -277,7 +279,7 @@ def createEmbeddings(email_body):
 
 
 
-def createEmbeddings(email_body, metadata):
+def createEmbeddings(cleaned_email, metadata):
     # Convert metadata to a text format
     metadata_text = []
     for key, value in metadata.items():
@@ -285,7 +287,7 @@ def createEmbeddings(email_body, metadata):
         metadata_text.append(f"{key}: {value_str}")
 
     # Combine the metadata and email body
-    combined_text = "\n".join(metadata_text) + "\n\n" + email_body
+    combined_text = "\n".join(metadata_text) + "\n\n" + cleaned_email
 
     # Generate embedding for the combined text
     embeddings = client.embeddings.create(
