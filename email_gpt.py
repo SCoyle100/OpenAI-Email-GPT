@@ -201,7 +201,7 @@ def retrieveMessages():
     messages_ = []  # Initialize an empty list to store messages
 
 # Get unread messages
-    unread_messages = inbox.get_messages(limit=3, query="isRead eq true")
+    unread_messages = inbox.get_messages(limit=3, query="isRead eq false")
 
 
 
@@ -224,7 +224,7 @@ def retrieveMessages():
             "Conversation ID": message.conversation_id,
             "Subject": message.subject,
             "Received": message.received,
-            #"Body preview": message.body_preview,
+            "Body preview": message.body_preview,
             "Attachments": attachments_info if attachments_info else None
         }
         
@@ -312,6 +312,7 @@ def storeVector(embedding, id, metadata):
                 'id': id,
                 'values': embedding,
                 'metadata': metadata,
+                 
             }
         ]
     }
@@ -590,8 +591,8 @@ functions = [
     },
     {
         "name": "email_vector_search",
-        "description": '''Processes a user query to search the pinecone vector database that includes the email inbox by creating an embedding for the query,
-        retrieving relevant contexts from the pinecone vector database, and generating a prompt for the run.''',
+        "description": '''Processes a user query to search the pinecone vector database that includes the email inbox by
+        retrieving relevant contexts from the pinecone vector database.''',
         "parameters": {
             "type": "object",
             "properties": {
