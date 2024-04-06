@@ -292,7 +292,7 @@ def createEmbeddings(cleaned_email, metadata):
     # Generate embedding for the combined text
     embeddings = client.embeddings.create(
         input=combined_text,
-        model="text-embedding-ada-002"
+        model="text-embedding-3-large"
     )
 
     # Extract the embedding
@@ -342,7 +342,7 @@ def get_index_stats(index):
 def createQueryVector(userQuery):
     queryEmbeddings = client.embeddings.create (
         input=userQuery,
-        model="text-embedding-ada-002",
+        model="text-embedding-3-large",
     )
 
     queryEmbedding = queryEmbeddings.data[0].embedding
@@ -391,7 +391,7 @@ def create_prompt(userQuery, queryEmbedding):
 
 def sendPrompt(prompt):
     completion = client.chat.completions.create(
-        model="gpt-4-1106-preview",
+        model="gpt-4-0125-preview",
         messages=[{"role": "system", "content": "You are a helpful assistant that answers questions about emails and more. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous."}, 
                   {"role": "user", "content": prompt}]
         )
@@ -630,7 +630,7 @@ functions = [
 def get_gpt_response(user_input):
     messages = [{"role": "system", "content": "You are a helpful assistant. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous, especially for email search. you may need to confirm if the user wants vector or standard email search."}, {"role": "user", "content": user_input}]
     return client.chat.completions.create(
-        model="gpt-4-1106-preview",
+        model="gpt-4-0125-preview",
         messages=messages,
         tools=[{"type": "function", "function": func} for func in functions],
         tool_choice="auto",
