@@ -350,20 +350,43 @@ def createQueryVector(userQuery):
     return queryEmbedding
 
 
+
 def contextSearch(queryEmbedding):
     searchResponse = index.query(
         vector=queryEmbedding,
-        top_k=3,
+        top_k=1,
         includeMetadata=True
     )
 
     matches = searchResponse.get('matches', [])
-    contexts = [
-        f"Subject: {result['metadata'].get('subject')}\nDate: {result['metadata'].get('date')}\nBody: {result['metadata'].get('body')}\nID: {result['metadata'].get('ID')}\nAttachments: {result['metadata'].get('Attachments')}" 
-        for result in matches 
-        if 'body' in result.get('metadata', {})
-    ]
+    if not matches:
+        return ["No matches found."]
+
+    contexts = []
+    for result in matches:
+        # Initialize an empty list to hold the result strings
+        result_strings = []
+
+        # Match the metadata fields and their naming convention exactly as stored in Pinecone
+        metadata_fields = {
+            'Subject': 'Subject',
+            'Received': 'Date',
+            'Body preview': 'Body',
+            'Body': 'Body',
+            'ID': 'ID',
+            'Attachments': 'Attachments'
+        }
+
+        for field, display_name in metadata_fields.items():
+            value = result['metadata'].get(field, 'N/A')  # Use 'N/A' if the field is not present
+            result_strings.append(f"{display_name}: {value}")
+
+        # Join all the result strings into a single string for this result
+        context = "\n".join(result_strings)
+        contexts.append(context)
+
     return contexts
+
 
 
 
