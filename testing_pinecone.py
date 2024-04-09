@@ -25,6 +25,9 @@ print("Index name:", index_name)
 
 
 
+
+
+
 def createQueryVector(userQuery):
     queryEmbeddings = client.embeddings.create (
         input=userQuery,
@@ -86,3 +89,5 @@ if __name__ == "__main__":
     print("Search Results:")
     for context in contexts:
         print(context)
+    # Assuming 'index' is your Pinecone Index object
+     

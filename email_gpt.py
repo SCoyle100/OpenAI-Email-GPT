@@ -292,7 +292,7 @@ def createEmbeddings(cleaned_email, metadata):
     # Generate embedding for the combined text
     embeddings = client.embeddings.create(
         input=combined_text,
-        model="text-embedding-3-large"
+        model="text-embedding-3-small"
     )
 
     # Extract the embedding
@@ -342,7 +342,7 @@ def get_index_stats(index):
 def createQueryVector(userQuery):
     queryEmbeddings = client.embeddings.create (
         input=userQuery,
-        model="text-embedding-3-large",
+        model="text-embedding-3-small",
     )
 
     queryEmbedding = queryEmbeddings.data[0].embedding
@@ -354,7 +354,7 @@ def createQueryVector(userQuery):
 def contextSearch(queryEmbedding):
     searchResponse = index.query(
         vector=queryEmbedding,
-        top_k=1,
+        top_k=3,
         includeMetadata=True
     )
 
