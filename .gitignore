@@ -1,3 +1,6 @@
 .env
 o365_token.txt
 
+*pyc
+
+__pycache__
