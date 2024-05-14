@@ -2,7 +2,6 @@ import os
 import json
 from dotenv import load_dotenv
 from email_functions import EmailProcessor
-from vector_search import EmailVectorSearch
 
 
 from openai import OpenAI
@@ -40,15 +39,19 @@ def main():
 
     
     messageData = shared_resources.email_processor.retrieveMessages()
+
+    shared_resources.email_processor.initialize_pinecone()
+
+    shared_resources.email_processor.processMessageData(messageData)
     
 
     #Instantiate the EmailVectorSearch class
-    shared_resources.email_vector = EmailVectorSearch(pinecone_api_key, shared_resources.email_processor)
+    #shared_resources.email_vector = EmailVectorSearch(pinecone_api_key, shared_resources.email_processor)
 
 
-    shared_resources.email_vector.initialize_pinecone()
+    #shared_resources.email_vector.initialize_pinecone()
 
-    shared_resources.email_vector.processMessageData(messageData)
+    #shared_resources.email_vector.processMessageData(messageData)
 
 
 
