@@ -3,7 +3,6 @@ import os
 import shared_resources
 
 
-email_processor = shared_resources.email_processor
 
 
 main_folder_path = r"C:\Users\seanc\OneDrive\Desktop\Function Calling Main Folder"
@@ -66,6 +65,11 @@ def send_email(person_name):
 
 
 def email_standard_search(query):
+
+    email_processor = shared_resources.email_processor
+
+    if email_processor is None:
+        raise ValueError("Error: email_processor is not initialized.")
     """
     Searches the Outlook inbox for messages matching the given query.
 
@@ -98,17 +102,26 @@ def email_standard_search(query):
 
 
 def email_vector_search(userQuery):
+
+    email_processor = shared_resources.email_processor
+
+    if email_processor is None:
+        raise ValueError("Error: email_processor is not initialized.")
+    
+    
+    if email_processor is None:
+        return "Error: EmailProcessor is not initialized."
     # Create the query embedding using the same encode model as in `createEmbeddings`
-    queryEmbedding = email_processor.createQueryVector(userQuery)
+    queryEmbedding = email_processor.create_query_vector(userQuery)
 
     # Retrieve relevant contexts from the vector database
-    contexts = email_processor.contextSearch(queryEmbedding)
+    contexts = email_processor.context_search(queryEmbedding)
 
     # Generate a prompt with the additional contexts to send to the completion model
     prompt = email_processor.create_prompt(userQuery, queryEmbedding)
 
     # Generate a response using the modified prompt
-    answer = email_processor.sendPrompt(prompt)
+    answer = email_processor.send_prompt(prompt)
     
     print(answer)
 
@@ -130,3 +143,97 @@ available_functions = {
     "email_vector_search": email_vector_search, #query email inbox
     "email_standard_search": email_standard_search
 }
+
+
+
+functions = [
+    {
+        "name": "create_folder",
+        "description": "Creates a folder with a specified name.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "folder_name": {
+                    "type": "string",
+                    "description": "The name of the folder to be created."
+                }
+            },
+            "required": ["folder_name"]
+        }
+    },
+    {
+        "name": "send_email",
+        "description": "Sends an email to a specified person.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "person_name": {
+                    "type": "string",
+                    "description": "The name of the person to send the email to."
+                }
+            },
+            "required": ["person_name"]
+        }
+    },
+    {
+        "name": "downloading_attachments",
+  "description": "Downloads email attachments to a specified folder.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "folder_name": {
+        "type": "string",
+        "description": "The name of the folder where attachments will be downloaded."
+      },
+      "files": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+           
+            "file_name": {
+              "type": "string"
+            },
+            
+            
+          },
+          "required": ["file_name"] 
+        },
+        "description": "The list of attachment objects to download."
+      }
+    },
+    "required": ["folder_name", "files"]
+        }
+    },
+    {
+        "name": "email_vector_search",
+        "description": '''Processes a user query to search the pinecone vector database that includes the email inbox by
+        retrieving relevant contexts from the pinecone vector database.''',
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "userQuery": {
+                    "type": "string",
+                    "description": "The user query to the email inbox to be processed. this is in the form of a question"
+                }
+            },
+            "required": ["userQuery"]
+        }
+    },
+    {
+    "name": "email_standard_search",
+    "description": "Searches the Outlook inbox for messages matching a given query. The function accesses the authenticated user's Outlook inbox and retrieves a list of messages that match the search criteria.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            
+            "query": {
+                "type": "string",
+                "description": "The search query to be used for filtering inbox messages."
+            }
+        },
+        "required": ["query"]
+    }
+}
+
+]

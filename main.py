@@ -31,27 +31,22 @@ def main():
     # Instantiate the EmailProcessor
     shared_resources.email_processor = EmailProcessor(client_id, client_secret, pinecone_api_key=pinecone_api_key)
 
-    shared_resources.email_processor.authenticate()
+    if shared_resources.email_processor is None:
+        print("Error: EmailProcessor is not initialized.")
+        return
 
-    # Now you can use email_processor to call methods defined in the EmailProcessor class
-    # For example, to retrieve and print messages:
+    shared_resources.email_processor.authenticate_o365()
+
+   
     shared_resources.email_processor.retrieve_and_print_messages()
 
     
-    messageData = shared_resources.email_processor.retrieveMessages()
+    messageData = shared_resources.email_processor.retrieve_messages()
 
     shared_resources.email_processor.initialize_pinecone()
 
-    shared_resources.email_processor.processMessageData(messageData)
+    shared_resources.email_processor.process_message_data(messageData)
     
-
-    #Instantiate the EmailVectorSearch class
-    #shared_resources.email_vector = EmailVectorSearch(pinecone_api_key, shared_resources.email_processor)
-
-
-    #shared_resources.email_vector.initialize_pinecone()
-
-    #shared_resources.email_vector.processMessageData(messageData)
 
 
 
