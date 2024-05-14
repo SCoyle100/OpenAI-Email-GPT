@@ -29,7 +29,7 @@ def main():
     pinecone_api_key = os.getenv('PINECONE_API')
 
     # Instantiate the EmailProcessor
-    shared_resources.email_processor = EmailProcessor(client_id, client_secret)
+    shared_resources.email_processor = EmailProcessor(client_id, client_secret, pinecone_api_key=pinecone_api_key)
 
     shared_resources.email_processor.authenticate()
 
