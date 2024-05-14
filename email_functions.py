@@ -1,6 +1,11 @@
 
 from O365 import Account
 from bs4 import BeautifulSoup
+import pinecone
+from openai import OpenAI
+
+
+
 
 class EmailProcessor:
     def __init__(self, client_id=None, client_secret=None, account=None):
@@ -79,7 +84,7 @@ class EmailProcessor:
     def createEmbeddings(self, cleaned_email, metadata):
         metadata_text = [f"{key}: {str(value) if value is not None else 'none'}" for key, value in metadata.items()]
         combined_text = "\n".join(metadata_text) + "\n\n" + cleaned_email
-        embeddings = client.embeddings.create(input=combined_text, model="text-embedding-3-small")
+        embeddings = self.client.embeddings.create(input=combined_text, model="text-embedding-3-small")
         return embeddings.data[0].embedding
 
     def storeVector(self, embedding, id, metadata):
@@ -87,7 +92,7 @@ class EmailProcessor:
         upsertRequest = {
             'vectors': [{'id': id, 'values': embedding, 'metadata': metadata}]
         }
-        upsertResponse = index.upsert(vectors=upsertRequest['vectors'])
+        upsertResponse = self.index.upsert(vectors=upsertRequest['vectors'])
         return upsertResponse
 
 
