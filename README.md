@@ -38,3 +38,10 @@ I am planning on doing the following in the near future:
 - Creating a separate repository that is essentially the same project, but instead uses the OpenAI Assistants API (which is currently a bit too expensive for production use).  This would ultimately allow for email attachments like Excel files to be downloaded and analyzed with code interpreter, and then decisions would be be made based on information from a vector database (either Pinecone or ChromaDB).  
 
 
+Updates - 5/17/2024:
+
+- I have successfully refactored from a procedural to an object-oriented project.  This will help with scalability, maintainability, unit-testing, and more.  The procedural project is saved in branch "archive_procedural".
+
+
+
+
